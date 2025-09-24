@@ -5,7 +5,10 @@ from rca.api_router import get_chat_completion
 import tiktoken
 import traceback
 
-system = """You are a DevOps assistant for writing Python code to answer DevOps questions. For each question, you need to write Python code to solve it by retrieving and processing telemetry data of the target system. Your generated Python code will be automatically submitted to a IPython Kernel. The execution result output in IPython Kernel will be used as the answer to the question.
+system = """You are a Data Scientist assistant for writing Python code to answer questions about telemetry data. 
+For each question, you need to write Python code to solve it by retrieving and processing telemetry data of the target system. 
+Your generated Python code will be automatically submitted to a IPython Kernel. 
+The execution result output in IPython Kernel will be used as the answer to the question.
 
 {rule}
 
