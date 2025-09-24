@@ -18,14 +18,37 @@ def handler(signum, frame):
 
 def main(args, uid, dataset):
 
-    from rca.baseline.rca_agent.rca_agent import RCA_Agent
-    import rca.baseline.rca_agent.prompt.agent_prompt as ap
-    if dataset == "Telecom":
-        import rca.baseline.rca_agent.prompt.basic_prompt_Telecom as bp
-    elif dataset == "Bank":
-        import rca.baseline.rca_agent.prompt.basic_prompt_Bank as bp
-    elif dataset == "Market/cloudbed-1" or dataset == "Market/cloudbed-2":
-        import rca.baseline.rca_agent.prompt.basic_prompt_Market as bp
+    # Choose agent type based on args
+    if args.use_advanced:
+        from rca.baseline.rca_agent_advanced.rca_agent_advanced import RCA_Agent_Advanced
+        import rca.baseline.rca_agent_advanced.prompt.agent_prompt as ap
+        if dataset == "Telecom":
+            import rca.baseline.rca_agent_advanced.prompt.basic_prompt_Telecom as bp
+        elif dataset == "Bank":
+            import rca.baseline.rca_agent_advanced.prompt.basic_prompt_Bank as bp
+        elif dataset == "Market/cloudbed-1" or dataset == "Market/cloudbed-2":
+            import rca.baseline.rca_agent_advanced.prompt.basic_prompt_Market as bp
+        
+        # Advanced agent configuration
+        advanced_config = {
+            'confidence_threshold': args.confidence_threshold,
+            'max_retries': args.max_retries,
+            'validation_enabled': args.validation_enabled,
+            'cross_validation_enabled': args.cross_validation_enabled,
+            'memory_optimization': args.memory_optimization,
+            'error_recovery': args.error_recovery,
+            'memory_mb': args.memory_mb
+        }
+        
+    else:
+        from rca.baseline.rca_agent.rca_agent import RCA_Agent
+        import rca.baseline.rca_agent.prompt.agent_prompt as ap
+        if dataset == "Telecom":
+            import rca.baseline.rca_agent.prompt.basic_prompt_Telecom as bp
+        elif dataset == "Bank":
+            import rca.baseline.rca_agent.prompt.basic_prompt_Bank as bp
+        elif dataset == "Market/cloudbed-1" or dataset == "Market/cloudbed-2":
+            import rca.baseline.rca_agent.prompt.basic_prompt_Market as bp
 
     inst_file = f"dataset/{dataset}/query.csv"
     gt_file = f"dataset/{dataset}/record.csv"
@@ -68,6 +91,12 @@ def main(args, uid, dataset):
     logger.info(f"Using dataset: {dataset}")
     logger.info(f"Using model: {configs['MODEL'].split('/')[-1]}")
     
+    if args.use_advanced:
+        logger.info("🚀 Using Advanced RCA Agent")
+        logger.info(f"📊 Advanced config: {advanced_config}")
+    else:
+        logger.info("🔧 Using Standard RCA Agent")
+    
     for idx, row in instruct_data.iterrows():
 
         if idx < args.start_idx:
@@ -101,7 +130,12 @@ def main(args, uid, dataset):
             try: 
                 signal.alarm(args.timeout)
 
-                agent = RCA_Agent(ap, bp)
+                # Initialize appropriate agent
+                if args.use_advanced:
+                    agent = RCA_Agent_Advanced(ap, bp, advanced_config)
+                else:
+                    agent = RCA_Agent(ap, bp)
+                    
                 prediction, trajectory, prompt = agent.run(instruction, 
                                                        logger, 
                                                        max_step=args.controller_max_step, 
@@ -168,16 +202,28 @@ def main(args, uid, dataset):
 if __name__ == "__main__":
     
     uid = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="Market/cloudbed-1")
-    parser.add_argument("--sample_num", type=int, default=1)
-    parser.add_argument("--start_idx", type=int, default=0)
-    parser.add_argument("--end_idx", type=int, default=150)
-    parser.add_argument("--controller_max_step", type=int, default=25)
-    parser.add_argument("--controller_max_turn", type=int, default=5)
-    parser.add_argument("--timeout", type=int, default=600)
-    parser.add_argument("--tag", type=str, default='rca')
-    parser.add_argument("--auto", type=bool, default=False)
+    parser = argparse.ArgumentParser(description='OpenRCA Agent Runner with Basic and Advanced options')
+    
+    # Basic arguments
+    parser.add_argument("--dataset", type=str, default="Market/cloudbed-1", help="Dataset to analyze")
+    parser.add_argument("--sample_num", type=int, default=1, help="Number of samples per task")
+    parser.add_argument("--start_idx", type=int, default=0, help="Start index for tasks")
+    parser.add_argument("--end_idx", type=int, default=150, help="End index for tasks")
+    parser.add_argument("--controller_max_step", type=int, default=25, help="Maximum controller steps")
+    parser.add_argument("--controller_max_turn", type=int, default=5, help="Maximum controller turns")
+    parser.add_argument("--timeout", type=int, default=60000, help="Timeout in seconds")
+    parser.add_argument("--tag", type=str, default='rca', help="Tag for output files")
+    parser.add_argument("--auto", action='store_true', help="Auto mode for all datasets")
+    
+    # Advanced agent arguments
+    parser.add_argument("--use_advanced", action='store_true', help="Use Advanced RCA Agent instead of basic")
+    parser.add_argument("--confidence_threshold", type=float, default=0.7, help="Confidence threshold for advanced agent")
+    parser.add_argument("--max_retries", type=int, default=3, help="Maximum retries for advanced agent")
+    parser.add_argument("--validation_enabled", action='store_true', default=True, help="Enable validation in advanced agent")
+    parser.add_argument("--cross_validation_enabled", action='store_true', default=True, help="Enable cross-validation")
+    parser.add_argument("--memory_optimization", action='store_true', default=True, help="Enable memory optimization")
+    parser.add_argument("--error_recovery", action='store_true', default=True, help="Enable error recovery")
+    parser.add_argument("--memory_mb", type=int, default=2048, help="Memory limit in MB")
 
     args = parser.parse_args()
 
